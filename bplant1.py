@@ -13,7 +13,7 @@ def debug(msg, level=DEBUG_BASE):
     if level <= USING_DEBUG_LEVEL:
         print(msg)
 
-DO_PARTICLE_TRACING = True
+DO_PARTICLE_TRACING = False
 DO_PROGRESS_LOGGING = True
 PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
 DO_INCREMENTAL_OUTPUT = True
@@ -29,7 +29,7 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # COMMAND LINE CONFIGS
 
 # GROW_AMOUNT - number of times to grow the plant by 1 step
-# PARTICLE_COUNT - how many particles to keep active at once (more means faster run and denser growth)
+# PARTICLE_COUNT - how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 # PARTICLE_INJECTION_MAX_RADIUS_FACTOR - as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # PARTICLE_INJECTION_MIN_RADIUS_FACTOR - as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # particles are injected in a ring formed by the difference between the max radius and min radius
@@ -37,8 +37,8 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
-GROW_AMOUNT = 300 # number of times to grow the plant by 1 step
-PARTICLE_COUNT = 5 # how many particles to keep active at once (more means faster run and denser growth) (20 is a decent base)
+GROW_AMOUNT = 2500 # number of times to grow the plant by 1 step
+PARTICLE_COUNT = 30 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 2 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 PARTICLE_INJECTION_MIN_RADIUS_FACTOR = 1 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # particles are injected in a ring formed by the difference between the max radius and min radius
@@ -57,11 +57,13 @@ IMAGE_BOUNDING_BOX = ((0, 0), (IMAGE_WIDTH-1, IMAGE_HEIGHT-1))
 PIXELS = IMAGE.load()
 DRAW = ImageDraw.Draw(IMAGE)
 
+MAX_PARTICLE_INJECT_INNER_RADIUS = max(IMAGE_WIDTH, IMAGE_HEIGHT) // 4 # inner radius for injection can be no more than 1/2 way from the center to the farthest edge
+# NOTE: the above assumes the seed is centered in either X or Y
+
 ##################################
 # PLANT DATA
 
 SEED_RADIUS = 4 
-
 
 
 ##################################
@@ -348,7 +350,7 @@ def get_particle_action_radii_from_base_radius(base_radius):
     Returns:
     - a list of particle radii: inject_inner_radius, inject_outer_radius, and max_movement_radius
     """
-    particle_inject_inner_radius = base_radius * PARTICLE_INJECTION_MIN_RADIUS_FACTOR
+    particle_inject_inner_radius = min(MAX_PARTICLE_INJECT_INNER_RADIUS, base_radius * PARTICLE_INJECTION_MIN_RADIUS_FACTOR)
     particle_inject_outer_radius = base_radius * PARTICLE_INJECTION_MAX_RADIUS_FACTOR
     particle_max_movement_radius = particle_inject_outer_radius + PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION
     return particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
@@ -379,11 +381,10 @@ def injected_particle(inject_center, inner_radius, outer_radius):
 
 def main():
     particle_inject_center = set_up_plant_seed()
+
     particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = get_particle_action_radii_from_base_radius(SEED_RADIUS)
 
-    tmark_first = time.time()
-    tmark_last = time.time()
-    tmark_cur = time.time()
+    tmark_first, tmark_last, tmark_cur = time.time(), time.time(), time.time()
 
     particles = []
     for i in range(PARTICLE_COUNT):
@@ -424,7 +425,8 @@ def main():
                 print(f"growth_counter: {growth_counter}/{GROW_AMOUNT}, {int((tmark_cur - tmark_last) * 1000)} ms elapsed for that increment")
                 tmark_last = tmark_cur
             if DO_INCREMENTAL_OUTPUT and growth_counter % INCREMENTAL_OUTPUT_INTERVAL == 0:
-                print(f"TODO: Saving incremental output to {incremental_output_path}")
+                print(f"Saving incremental output to {incremental_output_path}")
+                IMAGE.save(incremental_output_path)
         else:
             particle_distance = distance_between(particle_inject_center,particle)
             if particle_distance > particle_max_movement_radius:
@@ -433,10 +435,11 @@ def main():
             if DO_PARTICLE_TRACING:
                 PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_CUR
 
-    total_elapsed_ms = int((time.time() - tmark_first) * 1000)
-    final_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_{total_elapsed_ms}.png"
+    total_elapsed_s = int((time.time() - tmark_first))
+    final_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_{total_elapsed_s}.png"
     IMAGE.save(final_output_path)
-    print(f"Done. Total elapsed time for plant generation: {total_elapsed_ms} ms")
+    print(f"Done. Total elapsed time for plant generation: {total_elapsed_s} s")
+    print(f"Image saved to {final_output_path}")
 
 if __name__ == "__main__":
     main()
