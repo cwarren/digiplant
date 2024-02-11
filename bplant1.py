@@ -4,6 +4,18 @@ import math
 import time
 
 ##################################
+# TODO NOTES AND IDEAS
+
+# split this file up into a few files / modules; most of the function defs can be pulled apart
+# add unit tests
+# do a code cleaning pass
+# support command line options for the various configs - turn the numbers in here into defaults
+# put separated incrementals into a subfolder in the greenhouse
+# write usage documentation in the README
+# fancier movement strategies
+# other fanciness: nodes, needles/sticks, flowers, fruit, leaves, buds, color shifting, etc.
+
+##################################
 # CONFIGS / CONSTANTS
 
 USING_DEBUG_LEVEL = 1
