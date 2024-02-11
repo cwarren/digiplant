@@ -6,15 +6,9 @@ import time
 ##################################
 # CONFIGS / CONSTANTS
 
-DO_PARICLE_TRACING = True
+DO_PARTICLE_TRACING = True
 DO_PROGRESS_LOGGING = True
 DO_INCREMENTAL_OUTPUT = True
-
-# SEED_POINT
-# SEED_RADIUS
-
-# PARTICLE_INJECT_POINT
-# PARTICLE_INJECT_RADIUS
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -30,16 +24,32 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PARTICLE_INJECTION_MAX_RADIUS_FACTOR - as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # PARTICLE_INJECTION_MIN_RADIUS_FACTOR - as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # particles are injected in a ring formed by the difference between the max radius and min radius
-# PARTICLE_MOVEMENT_MAX_RAIUS - as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+# PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION - as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+
+GROW_AMOUNT = 300 # number of times to grow the plant by 1 step
+PARTICLE_COUNT = 20 # how many particles to keep active at once (more means faster run and denser growth)
+PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 2 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+PARTICLE_INJECTION_MIN_RADIUS_FACTOR = 1 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+# particles are injected in a ring formed by the difference between the max radius and min radius
+PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION = 20 # as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+
 
 ##################################
 # IMAGE DATA
 
-# IMAGE_PATH
-# IMAGE_WIDTH
-# IMAGE_HEIGHT
-# IMAGE_BOUNDING_BOX
-# PIXELS
+IMAGE_PATH = 'black512.png'
+IMAGE = Image.open(image_path)
+IMAGE_WIDTH, IMAGE_HEIGHT = image.size
+IMAGE_BOUNDING_BOX = ((0, 0), (IMAGE_WIDTH-1, IMAGE_HEIGHT-1))
+PIXELS = IMAGE.load()
+DRAW = ImageDraw.Draw(image)
+
+##################################
+# PLANT DATA
+
+SEED_RADIUS = 4 
+
+
 
 ##################################
 # FUNCTIONS - general planar stuff
@@ -299,6 +309,32 @@ def get_injection_min_radius_from_plant_max_radius(plant_max_radius):
     """
     return 1
 
+def set_up_plant_seed():
+    """
+    Set up the plant seed.
+
+    Returns:
+    - an (x,y) tuple representing the center of the plant seed
+    """
+    seedx, seedy = IMAGE_WIDTH // 2, IMAGE_HEIGHT - 1
+    seed_left_up_point = (seedx - SEED_RADIUS, seedy - SEED_RADIUS)
+    seed_right_down_point = (seedx + SEED_RADIUS, seedy + SEED_RADIUS)
+    DRAW.ellipse([seed_left_up_point, seed_right_down_point], outline=COLOR_PLANT, fill=COLOR_PLANT)
+    seed_center = (seedx, seedy)
+    return seed_center
+
+def get_particle_radii_from_base_radius(base_radius):
+    """
+    Get a list of particle radii, given the base radius.
+
+    Parameters:
+    - base_radius: the base radius to use
+
+    Returns:
+    - a list of particle radii: inject_inner_radius, inject_outer_radius, and max_movement_radius
+    """
+
+
 ##################################
 # TIME_TRACKING
 
@@ -310,22 +346,55 @@ tmark_cur = time.time()
 # MAIN
 
 def main():
-    # set up the plant
-    ## place and draw the seed
+    # set up the plant seed
+    particle_inject_center = set_up_plant_seed()
 
     # calculate appropriate bounds
-    ## min_inject_radius
-    ## max_inject_radius
-    ## max_movement_radius
+    particle_inject_inner_radius = SEED_RADIUS * PARTICLE_INJECTION_MIN_RADIUS_FACTOR
+    particle_inject_outer_radius = SEED_RADIUS * PARTICLE_INJECTION_MAX_RADIUS_FACTOR
+    particle_max_movement_radius = particle_inject_outer_radius + PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION
 
     # initialize the particle list by injecting the appropriate number of particles
+    particles = []
+    for i in range(PARTICLE_COUNT):
+        particles.append(get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius))
 
     # create incremental output file name, based on growth size and timestamp
+    incremental_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_incr.png"
 
     # main loop
     ## initialize counters for moves and growth
+    growth_counter = 0
+    loop_counter = 0
+    plant_radius = SEED_RADIUS
     ## while the plant is growing:
+    while growth_counter < GROW_AMOUNT:
+        loop_counter += 1
+        particle = particles.pop(0)
+
+        if DO_PARTICLE_TRACING:
+            PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_TRACE
+
+        particle = move_particle(particle)
+        if is_adjacent_to_live_pixel(particle):
+            grow_at(particle)
+            growth_counter += 1
+            growth_radius = distance_between(particle_inject_center,particle)
+            if growth_radius > plant_radius:
+                plant_radius = growth_radius
+
+            particle = get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
+        else:
+            # if not
+            # if it's outside the movement bounds, set the particle to a newly injected one
+            particle = get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
+            # add it back on to the end of list
+            particles.append(particle)
+            # if tracing particles, mark it's position using the current position color
+            if DO_PARTICLE_TRACING:
+                PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_POSITION
     ### pop the first particle in the list
+        
     ### if tracing particles, mark it's position using the tracing color
     ### move it
     ### check if it's adjacent to anything live
