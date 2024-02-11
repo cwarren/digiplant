@@ -15,10 +15,10 @@ def debug(msg, level=DEBUG_BASE):
 
 DO_PARTICLE_TRACING = False
 DO_PROGRESS_LOGGING = True
-PROGRESS_LOGGING_DEFAULT_INTERVAL = 200
+PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
 DO_INCREMENTAL_OUTPUT = True
 DO_INCREMENTAL_OUTPUT_SEPARATED = False
-INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 600
+INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 200
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -38,13 +38,13 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
-GROW_AMOUNT = 2500 # number of times to grow the plant by 1 step
+GROW_AMOUNT = 10000 # number of times to grow the plant by 1 step
 PARTICLE_COUNT = 25 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 
 # particles are injected in a ring formed by the difference between the max radius and min radius
 PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 1.6 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # NOTE: generally, you want the max to be > 1 and < 3, but you can go higher if you want; higher means sparser, lower means denser
-PARTICLE_INJECTION_MIN_RADIUS_FACTOR = .75 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+PARTICLE_INJECTION_MIN_RADIUS_FACTOR = .8 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # NOTE: min radius factor of < 1 will increase density, and also make things run faster
 # NOTE: the higher the proportion of the injection ring that overlaps the plant radius, the denser the structure
 PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION = 20 # as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
