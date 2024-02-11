@@ -6,9 +6,18 @@ import time
 ##################################
 # CONFIGS / CONSTANTS
 
+USING_DEBUG_LEVEL = 1
+DEBUG_BASE = 1
+DEBUG_EXTREME = 5
+def debug(msg, level=DEBUG_BASE):
+    if level <= USING_DEBUG_LEVEL:
+        print(msg)
+
 DO_PARTICLE_TRACING = True
 DO_PROGRESS_LOGGING = True
+PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
 DO_INCREMENTAL_OUTPUT = True
+INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 1000
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -25,24 +34,28 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PARTICLE_INJECTION_MIN_RADIUS_FACTOR - as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # particles are injected in a ring formed by the difference between the max radius and min radius
 # PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION - as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+# PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
+# INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
 GROW_AMOUNT = 300 # number of times to grow the plant by 1 step
-PARTICLE_COUNT = 20 # how many particles to keep active at once (more means faster run and denser growth)
+PARTICLE_COUNT = 5 # how many particles to keep active at once (more means faster run and denser growth) (20 is a decent base)
 PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 2 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 PARTICLE_INJECTION_MIN_RADIUS_FACTOR = 1 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
 # particles are injected in a ring formed by the difference between the max radius and min radius
 PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION = 20 # as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+PROGRESS_LOGGING_INTERVAL = PROGRESS_LOGGING_DEFAULT_INTERVAL
+INCREMENTAL_OUTPUT_INTERVAL = INCREMENTAL_OUTPUT_DEFAULT_INTERVAL
 
 
 ##################################
 # IMAGE DATA
 
 IMAGE_PATH = 'black512.png'
-IMAGE = Image.open(image_path)
-IMAGE_WIDTH, IMAGE_HEIGHT = image.size
+IMAGE = Image.open(IMAGE_PATH)
+IMAGE_WIDTH, IMAGE_HEIGHT = IMAGE.size
 IMAGE_BOUNDING_BOX = ((0, 0), (IMAGE_WIDTH-1, IMAGE_HEIGHT-1))
 PIXELS = IMAGE.load()
-DRAW = ImageDraw.Draw(image)
+DRAW = ImageDraw.Draw(IMAGE)
 
 ##################################
 # PLANT DATA
@@ -196,6 +209,26 @@ def get_random_point_in_ring(center, min_radius, max_radius):
     r = random.uniform(min_radius, max_radius)
     return polar_to_cartesian(center, r, angle)
 
+def is_point_in_rect(point, box):
+    """
+    Check if the given point is within the given rectangle.
+
+    Parameters:
+    - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0
+    - box: a tuple of (upper left point, lower right point) representing the bounding box.
+
+    Returns:
+    - True if the point is within the rectangle, False otherwise
+    """
+    (x, y) = point
+    (upper_left, lower_right) = box    
+    (x_min, y_min) = upper_left
+    (x_max, y_max) = lower_right    
+    if x_min <= x <= x_max and y_min <= y <= y_max:
+        return True
+    else:
+        return False
+
 def get_random_point_in_rect(box):
     """
     Get a random point within the given rectangle.
@@ -269,7 +302,12 @@ def move_particle(point, strategy = 'FULL_RANDOM_DRIFT'):
     Returns:
     - a point that has been moved according to the given strategy
     """
-    return (1,1)
+    if strategy == 'FULL_RANDOM_DRIFT':
+        adjacent_points = get_adjacent_points(point)
+        # Choose one of the adjacent points at random
+        point = random.choice(adjacent_points)
+        
+    return constrain_point_to_bounding_box(point,IMAGE_BOUNDING_BOX)
 
 def grow_at(point, strategy = 'DEPOSIT'):
     """
@@ -278,36 +316,13 @@ def grow_at(point, strategy = 'DEPOSIT'):
     Parameters:
     - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0
     - strategy: the growth strategy to use. Options are:
-    - 'DEPOSIT': deposit a single pixel at the given point
+    - 'DEPOSIT': convert a single pixel at the given point into part of the plant
 
     Returns:
     - None
     """
-    return None
-
-def get_injection_max_radius_from_plant_max_radius(plant_max_radius):
-    """
-    Get the maximum injection radius for the plant, given the plant's maximum radius. The injection radius is the max distance from the center of the seed for injecting a new particle. The plant radius is the farthest distance from the center of the seed that the plant has grown.
-
-    Parameters:
-    - plant_max_radius: the maximum radius of the plant
-
-    Returns:
-    - the maximum injection radius for the plant, given the plant's maximum radius.
-    """
-    return 1
-
-def get_injection_min_radius_from_plant_max_radius(plant_max_radius):
-    """
-    Get the minimum injection radius for the plant, given the plant's maximum radius. The injection radius is the max distance from the center of the seed for injecting a new particle. The plant radius is the farthest distance from the center of the seed that the plant has grown.
-
-    Parameters:
-    - plant_max_radius: the maximum radius of the plant
-
-    Returns:
-    - the minimum injection radius for the plant, given the plant's maximum radius.
-    """
-    return 1
+    if strategy == 'DEPOSIT':
+        PIXELS[point[0],point[1]] = COLOR_PLANT
 
 def set_up_plant_seed():
     """
@@ -323,7 +338,7 @@ def set_up_plant_seed():
     seed_center = (seedx, seedy)
     return seed_center
 
-def get_particle_radii_from_base_radius(base_radius):
+def get_particle_action_radii_from_base_radius(base_radius):
     """
     Get a list of particle radii, given the base radius.
 
@@ -333,31 +348,48 @@ def get_particle_radii_from_base_radius(base_radius):
     Returns:
     - a list of particle radii: inject_inner_radius, inject_outer_radius, and max_movement_radius
     """
+    particle_inject_inner_radius = base_radius * PARTICLE_INJECTION_MIN_RADIUS_FACTOR
+    particle_inject_outer_radius = base_radius * PARTICLE_INJECTION_MAX_RADIUS_FACTOR
+    particle_max_movement_radius = particle_inject_outer_radius + PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION
+    return particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
+
+def injected_particle(inject_center, inner_radius, outer_radius):
+    """
+    Get an (x,y) tuple representing a particle that has been injected into the growing medium
+
+    Parameters:
+    - center: an (x,y) tuple representing the center of the injection area
+    - inner_radius: the inner radius of the injection ring
+    - outer_radius: the outer radius of the injection ring
+
+    Returns:
+    - an (x,y) tuple representing the center of the injected particle, where x and y are integers
+    """
+    p = get_random_point_in_ring(inject_center, inner_radius, outer_radius)
+    while not is_point_in_rect(p, IMAGE_BOUNDING_BOX):
+        p = get_random_point_in_ring(inject_center, inner_radius, outer_radius)
+    return p
+
 
 
 ##################################
-# TIME_TRACKING
-
-tmark_first = time.time()
-tmark_last = time.time()
-tmark_cur = time.time()
-
+##################################
 ##################################
 # MAIN
 
 def main():
-    # set up the plant seed
     particle_inject_center = set_up_plant_seed()
+    particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = get_particle_action_radii_from_base_radius(SEED_RADIUS)
 
-    # calculate appropriate bounds
-    particle_inject_inner_radius = SEED_RADIUS * PARTICLE_INJECTION_MIN_RADIUS_FACTOR
-    particle_inject_outer_radius = SEED_RADIUS * PARTICLE_INJECTION_MAX_RADIUS_FACTOR
-    particle_max_movement_radius = particle_inject_outer_radius + PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION
+    tmark_first = time.time()
+    tmark_last = time.time()
+    tmark_cur = time.time()
 
-    # initialize the particle list by injecting the appropriate number of particles
     particles = []
     for i in range(PARTICLE_COUNT):
-        particles.append(get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius))
+        particles.append(injected_particle(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius))
+    debug(f"{len(particles)} particles injected")
+    debug(f"particles: {particles}")
 
     # create incremental output file name, based on growth size and timestamp
     incremental_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_incr.png"
@@ -367,51 +399,44 @@ def main():
     growth_counter = 0
     loop_counter = 0
     plant_radius = SEED_RADIUS
-    ## while the plant is growing:
+    ## while the plant is growing, get a particle, move it, and append it back on the list; handle growth and out-of-bounds replacement as needed
     while growth_counter < GROW_AMOUNT:
         loop_counter += 1
         particle = particles.pop(0)
+        debug(f"acting on particle {particle}", DEBUG_EXTREME)
 
         if DO_PARTICLE_TRACING:
             PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_TRACE
 
         particle = move_particle(particle)
+
         if is_adjacent_to_live_pixel(particle):
             grow_at(particle)
             growth_counter += 1
             growth_radius = distance_between(particle_inject_center,particle)
             if growth_radius > plant_radius:
                 plant_radius = growth_radius
-
-            particle = get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
+                particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = get_particle_action_radii_from_base_radius(plant_radius)
+            new_particle = injected_particle(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
+            particles.append(new_particle)
+            if DO_PROGRESS_LOGGING and growth_counter % PROGRESS_LOGGING_INTERVAL == 0:
+                tmark_cur = time.time()
+                print(f"growth_counter: {growth_counter}/{GROW_AMOUNT}, {int((tmark_cur - tmark_last) * 1000)} ms elapsed for that increment")
+                tmark_last = tmark_cur
+            if DO_INCREMENTAL_OUTPUT and growth_counter % INCREMENTAL_OUTPUT_INTERVAL == 0:
+                print(f"TODO: Saving incremental output to {incremental_output_path}")
         else:
-            # if not
-            # if it's outside the movement bounds, set the particle to a newly injected one
-            particle = get_random_point_in_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
-            # add it back on to the end of list
+            particle_distance = distance_between(particle_inject_center,particle)
+            if particle_distance > particle_max_movement_radius:
+                particle = injected_particle(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius)
             particles.append(particle)
-            # if tracing particles, mark it's position using the current position color
             if DO_PARTICLE_TRACING:
-                PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_POSITION
-    ### pop the first particle in the list
-        
-    ### if tracing particles, mark it's position using the tracing color
-    ### move it
-    ### check if it's adjacent to anything live
-    ### if so
-    #### grow the plant at that point
-    #### increment the growth counter
-    #### inject a new particle and add it to end of the list
-    #### if logging, check for logging break points and track and state timing
-    ### if not
-    #### if it's outside the movement bounds, set the particle to a newly injected one
-    #### add it back on to the end of list
-    #### if tracing particles, mark it's position using the current position color
-    ### if doing incremental output, check for output break point and write image to file
+                PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_CUR
 
-    # create final output file name, based on growth size and timestamp and duration
-    # write image to file
-    print("Done!")
+    total_elapsed_ms = int((time.time() - tmark_first) * 1000)
+    final_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_{total_elapsed_ms}.png"
+    IMAGE.save(final_output_path)
+    print(f"Done. Total elapsed time for plant generation: {total_elapsed_ms} ms")
 
 if __name__ == "__main__":
     main()
