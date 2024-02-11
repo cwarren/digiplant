@@ -15,9 +15,10 @@ def debug(msg, level=DEBUG_BASE):
 
 DO_PARTICLE_TRACING = False
 DO_PROGRESS_LOGGING = True
-PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
+PROGRESS_LOGGING_DEFAULT_INTERVAL = 200
 DO_INCREMENTAL_OUTPUT = True
-INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 1000
+DO_INCREMENTAL_OUTPUT_SEPARATED = False
+INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 600
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -38,10 +39,14 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
 GROW_AMOUNT = 2500 # number of times to grow the plant by 1 step
-PARTICLE_COUNT = 30 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
-PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 2 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
-PARTICLE_INJECTION_MIN_RADIUS_FACTOR = 1 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+PARTICLE_COUNT = 25 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
+
 # particles are injected in a ring formed by the difference between the max radius and min radius
+PARTICLE_INJECTION_MAX_RADIUS_FACTOR = 1.6 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+# NOTE: generally, you want the max to be > 1 and < 3, but you can go higher if you want; higher means sparser, lower means denser
+PARTICLE_INJECTION_MIN_RADIUS_FACTOR = .75 # as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+# NOTE: min radius factor of < 1 will increase density, and also make things run faster
+# NOTE: the higher the proportion of the injection ring that overlaps the plant radius, the denser the structure
 PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION = 20 # as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
 PROGRESS_LOGGING_INTERVAL = PROGRESS_LOGGING_DEFAULT_INTERVAL
 INCREMENTAL_OUTPUT_INTERVAL = INCREMENTAL_OUTPUT_DEFAULT_INTERVAL
@@ -372,7 +377,22 @@ def injected_particle(inject_center, inner_radius, outer_radius):
         p = get_random_point_in_ring(inject_center, inner_radius, outer_radius)
     return p
 
+##################################
+# TEXT FORMATTING
 
+def lpad(tnum, n):
+    """
+    Left-pad a number with zeros to make it a fixed-width string.
+
+    Parameters:
+    - tnum: the number to left-pad
+    - n: the number of zeros to add to the left of the number
+
+    Returns:
+    - the left-padded string
+    """
+    padded_string = "{:0>{width}}".format(tnum, width=n)
+    return padded_string
 
 ##################################
 ##################################
@@ -393,12 +413,14 @@ def main():
     debug(f"particles: {particles}")
 
     # create incremental output file name, based on growth size and timestamp
-    incremental_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_incr.png"
+    incremental_output_file_base = f"plant_{GROW_AMOUNT}_{tmark_first}_incr"
+    num_output_increments = GROW_AMOUNT // INCREMENTAL_OUTPUT_INTERVAL
 
     # main loop
     ## initialize counters for moves and growth
     growth_counter = 0
     loop_counter = 0
+    incremental_output_counter = 0
     plant_radius = SEED_RADIUS
     ## while the plant is growing, get a particle, move it, and append it back on the list; handle growth and out-of-bounds replacement as needed
     while growth_counter < GROW_AMOUNT:
@@ -425,6 +447,10 @@ def main():
                 print(f"growth_counter: {growth_counter}/{GROW_AMOUNT}, {int((tmark_cur - tmark_last) * 1000)} ms elapsed for that increment")
                 tmark_last = tmark_cur
             if DO_INCREMENTAL_OUTPUT and growth_counter % INCREMENTAL_OUTPUT_INTERVAL == 0:
+                incremental_output_counter += 1
+                incremental_output_path = f"greenhouse/{incremental_output_file_base}.png"
+                if DO_INCREMENTAL_OUTPUT_SEPARATED:
+                    incremental_output_path = f"greenhouse/{incremental_output_file_base}_{lpad(incremental_output_counter,4)}.png"
                 print(f"Saving incremental output to {incremental_output_path}")
                 IMAGE.save(incremental_output_path)
         else:
