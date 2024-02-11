@@ -412,9 +412,8 @@ def main():
     debug(f"{len(particles)} particles injected")
     debug(f"particles: {particles}")
 
-    # create incremental output file name, based on growth size and timestamp
+    # create incremental output file base name, based on growth size and timestamp
     incremental_output_file_base = f"plant_{GROW_AMOUNT}_{tmark_first}_incr"
-    num_output_increments = GROW_AMOUNT // INCREMENTAL_OUTPUT_INTERVAL
 
     # main loop
     ## initialize counters for moves and growth
