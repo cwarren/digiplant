@@ -1,5 +1,23 @@
 import planar_utils as pu
 
+def setup_particle_list(num_particles, inject_center, inject_inner_radius, inject_outer_radius, bounding_box):
+    """
+    Create a list of particles, with each particle having a random position and radius.
+    The particles are placed in a ring around the center of the plant, with the ring radius
+
+    Parameters:
+    - num_particles: The number of particles to create.
+    - inject_params: A tuple of (inject_center (x,y), inject_inner_radius, inject_outer_radius)
+    - bounding_box: Tuple of ((min_x, min_y), (max_x, max_y)) representing the bounding box of the injection area (usually the image bounds)
+
+    Returns:
+    - A list of particles, each with a random position and radius.
+    """
+    particles = []
+    for _ in range(num_particles):
+        particles.append(injected_particle(inject_center, inject_inner_radius, inject_outer_radius, bounding_box))
+    return particles
+
 def is_adjacent_to_live_pixel(point, pixels, dead_colors):
     """
     Determine if the given point is adjacent to a live pixel, where 'live' is defined as a pixel that has a color value that's not in the DEAD_COLORS list
