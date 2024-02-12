@@ -182,7 +182,7 @@ def get_random_point_in_rect(box):
     y = random.uniform(y_min, y_max)
     return (int(x), int(y))
 
-def filter_coordinates_within_bounding_box(coordinates, box):
+def filter_points_within_bounding_box(coordinates, box):
     """
     Filters a list of (x, y) coordinates to return only those within a given bounding box.
 

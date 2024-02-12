@@ -95,7 +95,9 @@ def test_get_random_point_in_ring():
     
     # Check if the point is within the ring
     dist = distance_between(center, point)
-    assert min_radius <= dist <= max_radius, "The point is not within the specified ring"
+
+    # NOTE: the -1 and +1 are there to handle edge cases caused by integer casting of points
+    assert min_radius - 1 <= dist <= max_radius + 1, "The point is not within the specified ring"
 
 
 def test_get_random_point_in_ring_invalid_radius():
@@ -136,12 +138,12 @@ def test_get_random_point_in_rect():
     assert y_min <= y <= y_max, "Y coordinate is out of the box"
 
 
-def test_filter_coordinates_within_bounding_box():
+def test_filter_points_within_bounding_box():
     coordinates = [(0, 0), (5, 5), (10, 10), (-1, -1), (11, 11)]
     box = ((0, 0), (10, 10))
     expected_filtered_coordinates = [(0, 0), (5, 5), (10, 10)]
     
-    filtered_coordinates = filter_coordinates_within_bounding_box(coordinates, box)
+    filtered_coordinates = filter_points_within_bounding_box(coordinates, box)
     
     assert filtered_coordinates == expected_filtered_coordinates, "Filtered coordinates do not match expected list"
 
