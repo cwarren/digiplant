@@ -139,6 +139,8 @@ def get_random_point_in_ring(center, min_radius, max_radius):
     Returns:
     - a point within the ring as an (x,y) tuple, where the x and y values are integers
     """
+    if min_radius > max_radius:
+        raise ValueError("The minimum radius must be less than the maximum radius")
     angle = random.uniform(0, 2 * math.pi)
     r = random.uniform(min_radius, max_radius)
     return polar_to_cartesian(center, r, angle)
