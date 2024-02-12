@@ -7,6 +7,7 @@ import sys
 ##################################
 # TODO NOTES AND IDEAS
 
+# generate the base image in code rather than loading one from disk
 # add command-line configs for grow amount, logging flag and increment, and inremental output flags and increment, and debug level
 # get the plant attribute configs from a "genetics" file instead of having them hard-coded here
 # put separated incrementals into a subfolder in the greenhouse
