@@ -7,9 +7,8 @@ import sys
 ##################################
 # TODO NOTES AND IDEAS
 
-# ** add unit tests
-# do a code cleaning pass
-# support command line options for the various configs - turn the numbers in here into defaults
+# add command-line configs for grow amount, logging flag and increment, and inremental output flags and increment, and debug level
+# get the plant attribute configs from a "genetics" file instead of having them hard-coded here
 # put separated incrementals into a subfolder in the greenhouse
 # write usage documentation in the README
 # fancier movement strategies
@@ -18,19 +17,22 @@ import sys
 ##################################
 # CONFIGS / CONSTANTS
 
-USING_DEBUG_LEVEL = 1
-DEBUG_BASE = 1
+USING_DEBUG_LEVEL = 0
+DEBUG_LOW = 1
+DEBUG_DEVELOPING = 2
+DEBUG_RICH = 2
+DEBUG_VERY_RICH = 2
 DEBUG_EXTREME = 5
-def debug(msg, level=DEBUG_BASE):
+def debug(msg, level=DEBUG_LOW):
     if level <= USING_DEBUG_LEVEL:
         print(msg)
 
 DO_PARTICLE_TRACING = False
-DO_PROGRESS_LOGGING = False
+DO_PROGRESS_LOGGING = True
 PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
 DO_INCREMENTAL_OUTPUT = True
 DO_INCREMENTAL_OUTPUT_SEPARATED = False
-INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 100
+INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 400
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -50,7 +52,7 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
-GROW_AMOUNT = 500 # number of times to grow the plant by 1 step
+GROW_AMOUNT = 1000 # number of times to grow the plant by 1 step
 PARTICLE_COUNT = 25 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 
 # particles are injected in a ring formed by the difference between the max radius and min radius
@@ -99,6 +101,74 @@ def lpad(tnum, n):
     padded_string = "{:0>{width}}".format(tnum, width=n)
     return padded_string
 
+
+def handle_progress_logging(growth_counter, tmark_last):
+    """
+    Handle logging of progress to the screen.
+
+    Parameters:
+    - grow_count: the number of growth actions that have been performed
+    - tmark_last: the time in seconds when the last progress report was printed
+
+    Returns:
+    - tmark_cur: the time in seconds when the current progress report was printed
+    """
+    
+    if DO_PROGRESS_LOGGING and growth_counter % PROGRESS_LOGGING_INTERVAL == 0:        
+        tmark_cur = time.time()
+        print(f"growth_counter: {growth_counter}/{GROW_AMOUNT}, {int((tmark_cur - tmark_last) * 1000)} ms elapsed for that increment")
+        return tmark_cur
+    return tmark_last
+
+def handle_incremental_output(incremental_output_counter, growth_counter, incremental_output_file_base):
+    """
+    Handle output of the image to file at a given interval
+
+    Parameters:
+    - incremental_output_counter: the number of growth actions that have been performed
+    - growth_counter: the number of growth actions that have been performed
+    - incremental_output_file_base: the base name of the file to output to
+
+    Returns:
+    - the new incremental output counter value
+    """
+    if DO_INCREMENTAL_OUTPUT and growth_counter % INCREMENTAL_OUTPUT_INTERVAL == 0:
+        incremental_output_counter += 1
+        incremental_output_path = f"greenhouse/{incremental_output_file_base}.png"
+        if DO_INCREMENTAL_OUTPUT_SEPARATED:
+            incremental_output_path = f"greenhouse/{incremental_output_file_base}_{lpad(incremental_output_counter,4)}.png"
+        print(f"Saving incremental output to {incremental_output_path}")
+        IMAGE.save(incremental_output_path)
+    return incremental_output_counter
+
+
+def grow_radii(particle_that_grew, plant_center, plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius):
+    """
+    based on the particle that grew and the initial plant radius, get the new plant radius and inject and movement radii
+
+    Parameters:
+    - particle_that_grew: the (x,y) at which growth occurred
+    - plant_center: (x,y) point of the center of the plant
+    - plant_radius: the radius of the plant prior to the growth
+
+    Returns:
+    - plant_radius - the new plant radius (which may be the same as the original, depending on where growth occurred)
+    - particle_inject_inner_radius
+    - particle_inject_outer_radius
+    - particle_max_movement_radius
+    """
+    growth_radius = pu.distance_between(plant_center,particle_that_grew)
+    if growth_radius > plant_radius:
+        plant_radius = growth_radius
+        particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = pg.get_particle_action_radii_from_base_radius(
+            plant_radius,
+            PARTICLE_INJECTION_MIN_RADIUS_FACTOR,
+            PARTICLE_INJECTION_MAX_RADIUS_FACTOR,
+            PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION,
+            MAX_PARTICLE_INJECT_INNER_RADIUS
+            )
+    return plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
+        
 ##################################
 ##################################
 ##################################
@@ -115,24 +185,22 @@ def main():
         MAX_PARTICLE_INJECT_INNER_RADIUS
         )
 
-    tmark_first, tmark_last, tmark_cur = time.time(), time.time(), time.time()
+    tmark_first, tmark_last = time.time(), time.time()
 
     particles = pg.setup_particle_list(PARTICLE_COUNT, particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius, IMAGE_BOUNDING_BOX)
     debug(f"{len(particles)} particles injected")
-    debug(f"particles: {particles}")
+    debug(f"particles: {particles}", DEBUG_DEVELOPING)
 
     # create incremental output file base name, based on growth size and timestamp
     incremental_output_file_base = f"plant_{GROW_AMOUNT}_{tmark_first}_incr"
+    debug(f"incremental_output_file_base: {incremental_output_file_base}", DEBUG_DEVELOPING)
 
     # MAIN LOOP
-    ## initialize counters for moves and growth, and initialize plant radi
+    ## while the plant is growing, get a particle, move it, and append it back on the list; handle growth and out-of-bounds replacement as needed
     growth_counter = 0
-    loop_counter = 0
     incremental_output_counter = 0
     plant_radius = SEED_RADIUS
-    ## while the plant is growing, get a particle, move it, and append it back on the list; handle growth and out-of-bounds replacement as needed
     while growth_counter < GROW_AMOUNT:
-        loop_counter += 1
         particle = particles.pop(0)
         debug(f"acting on particle {particle}", DEBUG_EXTREME)
 
@@ -141,33 +209,22 @@ def main():
 
         particle = pg.move_particle(particle, IMAGE_BOUNDING_BOX)
 
-        if pg.is_adjacent_to_live_pixel(particle, PIXELS, DEAD_COLORS):
-            pg.grow_at(particle, PIXELS, COLOR_PLANT)
+        if pg.is_adjacent_to_live_pixel(particle, PIXELS, DEAD_COLORS, IMAGE_BOUNDING_BOX):
             growth_counter += 1
-            growth_radius = pu.distance_between(particle_inject_center,particle)
-            if growth_radius > plant_radius:
-                plant_radius = growth_radius
-                particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = pg.get_particle_action_radii_from_base_radius(
-                    plant_radius,
-                    PARTICLE_INJECTION_MIN_RADIUS_FACTOR,
-                    PARTICLE_INJECTION_MAX_RADIUS_FACTOR,
-                    PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION,
-                    MAX_PARTICLE_INJECT_INNER_RADIUS
-                    )
+            pg.grow_at(particle, PIXELS, COLOR_PLANT)
+            debug(f"grew at {particle}", DEBUG_VERY_RICH)
+
+            plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = grow_radii(particle, 
+                                                                                                                                particle_inject_center, 
+                                                                                                                                plant_radius, 
+                                                                                                                                particle_inject_inner_radius, 
+                                                                                                                                particle_inject_outer_radius, 
+                                                                                                                                particle_max_movement_radius)
 
             new_particle = pg.injected_particle_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius, IMAGE_BOUNDING_BOX)
             particles.append(new_particle)
-            if DO_PROGRESS_LOGGING and growth_counter % PROGRESS_LOGGING_INTERVAL == 0:
-                tmark_cur = time.time()
-                print(f"growth_counter: {growth_counter}/{GROW_AMOUNT}, {int((tmark_cur - tmark_last) * 1000)} ms elapsed for that increment")
-                tmark_last = tmark_cur
-            if DO_INCREMENTAL_OUTPUT and growth_counter % INCREMENTAL_OUTPUT_INTERVAL == 0:
-                incremental_output_counter += 1
-                incremental_output_path = f"greenhouse/{incremental_output_file_base}.png"
-                if DO_INCREMENTAL_OUTPUT_SEPARATED:
-                    incremental_output_path = f"greenhouse/{incremental_output_file_base}_{lpad(incremental_output_counter,4)}.png"
-                print(f"Saving incremental output to {incremental_output_path}")
-                IMAGE.save(incremental_output_path)
+            tmark_last = handle_progress_logging(growth_counter, tmark_last)
+            incremental_output_counter = handle_incremental_output(incremental_output_counter, growth_counter, incremental_output_file_base)
         else:
             particle = pg.get_particle_within_movement_bounds_ring(particle,
                                                                    particle_inject_center, 

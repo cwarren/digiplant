@@ -55,7 +55,6 @@ def is_adjacent_to_live_pixel(point, pixels, dead_colors, bounding_box):
         try:
             # Check if the adjacent point is within the image bounds
             # NOTE: color check uses [:3] since the source has an alpha channel that we don't care about
-            print(f"pixels[{adj_point}]: {pixels[adj_point][:3]}")
             if pixels[adj_point][:3] not in dead_colors:
                 return True
         except IndexError:
