@@ -2,6 +2,24 @@ from PIL import ImageDraw
 import planar_utils as pu
 import random
 
+def injected_particle_ring(inject_center, inner_radius, outer_radius, image_bounds):
+    """
+    Get an (x,y) tuple representing a particle that has been injected into the growing medium
+
+    Parameters:
+    - center: an (x,y) tuple representing the center of the injection area
+    - inner_radius: the inner radius of the injection ring
+    - outer_radius: the outer radius of the injection ring
+
+    Returns:
+    - an (x,y) tuple representing the center of the injected particle, where x and y are integers
+    """
+    p = pu.get_random_point_in_ring(inject_center, inner_radius, outer_radius)
+    while not pu.is_point_in_rect(p, image_bounds):
+        p = pu.get_random_point_in_ring(inject_center, inner_radius, outer_radius)
+    return p
+
+
 def setup_particle_list(num_particles, inject_center, inject_inner_radius, inject_outer_radius, bounding_box):
     """
     Create a list of particles, with each particle having a random position and radius.
@@ -17,7 +35,7 @@ def setup_particle_list(num_particles, inject_center, inject_inner_radius, injec
     """
     particles = []
     for _ in range(num_particles):
-        particles.append(injected_particle(inject_center, inject_inner_radius, inject_outer_radius, bounding_box))
+        particles.append(injected_particle_ring(inject_center, inject_inner_radius, inject_outer_radius, bounding_box))
     return particles
 
 def is_adjacent_to_live_pixel(point, pixels, dead_colors):
@@ -119,19 +137,22 @@ def get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor,
     particle_max_movement_radius = particle_inject_outer_radius + movement_radius_extension
     return particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
 
-def injected_particle(inject_center, inner_radius, outer_radius, image_bounds):
+def get_particle_within_movement_bounds_ring(orig_particle, inject_center, inject_inner_radius, inject_outer_radius, max_movement_radius, bounding_box):
     """
-    Get an (x,y) tuple representing a particle that has been injected into the growing medium
+    Determine if the given particle is within the movement bounds of the given particle based on the inject center and max movement radius. If so, return it, and if not return a newly injected particle.
 
     Parameters:
-    - center: an (x,y) tuple representing the center of the injection area
-    - inner_radius: the inner radius of the injection ring
-    - outer_radius: the outer radius of the injection ring
+    - particle: a particle object, an (x,y) tuple where x and y are integer cooridinates on a grid with 0,0 in the upper left
+    - particle_inject_center: the center of the particle injection ring, an (x,y) tuple where x and y are integer cooridinates on a grid with 0,0 in the upper left
+    - particle_inject_inner_radius: the inner radius of the particle injection ring
+    - particle_inject_outer_radius: the outer radius of the particle injection ring
+    - particle_max_movement_radius: the maximum movement radius of the particle from the inject center
+    - bounding_box: the bounding box of the grid that contains the particle, a tuple of ((min_x, min_y), (max_x, max_y))
 
     Returns:
-    - an (x,y) tuple representing the center of the injected particle, where x and y are integers
+    - a particle object that is within the movement bounds; either the original particle, or a new or a newly injected particle
     """
-    p = pu.get_random_point_in_ring(inject_center, inner_radius, outer_radius)
-    while not pu.is_point_in_rect(p, image_bounds):
-        p = pu.get_random_point_in_ring(inject_center, inner_radius, outer_radius)
-    return p
+    particle_distance = pu.distance_between(inject_center,orig_particle)
+    if particle_distance > max_movement_radius:
+        return injected_particle_ring(inject_center, inject_inner_radius, inject_outer_radius, bounding_box)
+    return orig_particle

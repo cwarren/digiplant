@@ -6,8 +6,7 @@ import plant_growth as pg
 ##################################
 # TODO NOTES AND IDEAS
 
-# ** split this file up into a few files / modules; most of the function defs can be pulled apart
-# add unit tests
+# ** add unit tests
 # do a code cleaning pass
 # support command line options for the various configs - turn the numbers in here into defaults
 # put separated incrementals into a subfolder in the greenhouse
@@ -26,11 +25,11 @@ def debug(msg, level=DEBUG_BASE):
         print(msg)
 
 DO_PARTICLE_TRACING = False
-DO_PROGRESS_LOGGING = True
+DO_PROGRESS_LOGGING = False
 PROGRESS_LOGGING_DEFAULT_INTERVAL = 100
 DO_INCREMENTAL_OUTPUT = True
 DO_INCREMENTAL_OUTPUT_SEPARATED = False
-INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 200
+INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 100
 
 COLOR_BG = (0,0,0)
 COLOR_PARTICLE_TRACE = (128,0,0)
@@ -50,7 +49,7 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
-GROW_AMOUNT = 1000 # number of times to grow the plant by 1 step
+GROW_AMOUNT = 500 # number of times to grow the plant by 1 step
 PARTICLE_COUNT = 25 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 
 # particles are injected in a ring formed by the difference between the max radius and min radius
@@ -155,7 +154,7 @@ def main():
                     MAX_PARTICLE_INJECT_INNER_RADIUS
                     )
 
-            new_particle = pg.injected_particle(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius, IMAGE_BOUNDING_BOX)
+            new_particle = pg.injected_particle_ring(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius, IMAGE_BOUNDING_BOX)
             particles.append(new_particle)
             if DO_PROGRESS_LOGGING and growth_counter % PROGRESS_LOGGING_INTERVAL == 0:
                 tmark_cur = time.time()
@@ -169,9 +168,12 @@ def main():
                 print(f"Saving incremental output to {incremental_output_path}")
                 IMAGE.save(incremental_output_path)
         else:
-            particle_distance = pu.distance_between(particle_inject_center,particle)
-            if particle_distance > particle_max_movement_radius:
-                particle = pg.injected_particle(particle_inject_center, particle_inject_inner_radius, particle_inject_outer_radius, IMAGE_BOUNDING_BOX)
+            particle = pg.get_particle_within_movement_bounds_ring(particle,
+                                                                   particle_inject_center, 
+                                                                   particle_inject_inner_radius, 
+                                                                   particle_inject_outer_radius, 
+                                                                   particle_max_movement_radius, 
+                                                                   IMAGE_BOUNDING_BOX)
             particles.append(particle)
             if DO_PARTICLE_TRACING:
                 PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_CUR
