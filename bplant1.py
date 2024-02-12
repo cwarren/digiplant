@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw
 import time
 import planar_utils as pu
 import plant_growth as pg
+import sys
 
 ##################################
 # TODO NOTES AND IDEAS
@@ -104,7 +105,7 @@ def lpad(tnum, n):
 # MAIN
 
 def main():
-    particle_inject_center = pg.set_up_plant_seed(IMAGE, SEED_RADIUS, COLOR_PLANT)
+    particle_inject_center = pg.setup_plant_seed_bottom_center(IMAGE, SEED_RADIUS, COLOR_PLANT)
 
     particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = pg.get_particle_action_radii_from_base_radius(
         SEED_RADIUS,

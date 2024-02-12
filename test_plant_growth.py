@@ -7,11 +7,12 @@ from plant_growth import *
 ############################
 # TEST SUPPORT
 
-def get_test_pixel_grid_and_bounds(x=4,y=4,bg_rgb = (0,0,0)):
+def get_test_image(x=4,y=4,bg_rgb = (0,0,0)):
     image = Image.new('RGB', (x, y), bg_rgb)
-    pixels =  image.load()
-    bounding_box = ((0,0),image.size)
-    return pixels, bounding_box
+    return image
+    # pixels =  image.load()
+    # bounding_box = ((0,0),image.size)
+    # return pixels, bounding_box
 
 ############################
 # TESTS
@@ -67,7 +68,9 @@ def test_is_adjacent_to_live_pixel(point_to_test, live_point, gridx, gridy, expe
     live_color = (128, 128, 128)  # Example of a "live" color
 
     # Setup a pixels grid with a live pixel adjacent to the point being checked
-    pixels, bounds =  get_test_pixel_grid_and_bounds(gridx, gridy)
+    image = get_test_image(gridx, gridy)
+    pixels = image.load()
+    bounds =  ((0,0),image.size)
     pixels[live_point] = live_color
     
     assert is_adjacent_to_live_pixel(point_to_test, pixels, dead_colors, bounds) == expected_check
@@ -86,6 +89,32 @@ def test_move_particle_full_random_drift(point, bounding_box, expected_bounds):
     # Ensure the point has moved to an adjacent location (or potentially stayed the same if it moved to its original position)
     assert pu.distance_between(point, moved_point) <= math.sqrt(2) + .001, "The point did not move to an adjacent position"
 
+
+def test_grow_at_deposit():
+    point = (4, 4)
+    plant_color = (0, 128, 0)  # Example plant color
+    image =  get_test_image(7,7,(0,0,0))
+    pixels = image.load()
+
+    assert pixels[point] == (0,0,0), "Pixel at point not initially black"
+    grow_at(point, pixels, plant_color, strategy='DEPOSIT')
+    assert pixels[point] == plant_color, "Pixel at point did not change to plant color"
+
+
+def test_setup_plant_seed_bottom_center():
+    im_w, im_h = 100, 100  # Example image size
+    image = get_test_image(im_w, im_h,(255,255,255))
+    seed_radius = 10
+    fill_color = (0, 128, 0)  # Example fill color (green)
+
+    seed_center = setup_plant_seed_bottom_center(image, seed_radius, fill_color)
+    expected_seed_center = (im_w // 2, im_h - 1)
+
+    assert seed_center == expected_seed_center, "Seed center is not at the expected position"
+
+    # To further validate, check if the pixel at the seed center is the fill color
+    pixels = image.load()
+    assert pixels[seed_center] == fill_color, "Seed center pixel color does not match the fill color"
 
 
 

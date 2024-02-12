@@ -99,7 +99,7 @@ def grow_at(point, pixels, plant_color, strategy = 'DEPOSIT'):
     if strategy == 'DEPOSIT':
         pixels[point[0],point[1]] = plant_color
 
-def set_up_plant_seed(image, seed_radius, fill_color):
+def setup_plant_seed_bottom_center(image, seed_radius, fill_color):
     """
     Set up the plant seed.
 
