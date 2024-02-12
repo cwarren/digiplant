@@ -1,5 +1,4 @@
 from PIL import Image, ImageDraw
-import random
 import time
 import planar_utils as pu
 import plant_growth as pg
@@ -126,7 +125,7 @@ def main():
     incremental_output_file_base = f"plant_{GROW_AMOUNT}_{tmark_first}_incr"
 
     # MAIN LOOP
-    ## initialize counters for moves and growth, and initialize plant radius
+    ## initialize counters for moves and growth, and initialize plant radi
     growth_counter = 0
     loop_counter = 0
     incremental_output_counter = 0
@@ -140,10 +139,10 @@ def main():
         if DO_PARTICLE_TRACING:
             PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_TRACE
 
-        particle = pg.move_particle(particle)
+        particle = pg.move_particle(particle, IMAGE_BOUNDING_BOX)
 
         if pg.is_adjacent_to_live_pixel(particle, PIXELS, DEAD_COLORS):
-            pg.grow_at(particle, PIXELS)
+            pg.grow_at(particle, PIXELS, COLOR_PLANT)
             growth_counter += 1
             growth_radius = pu.distance_between(particle_inject_center,particle)
             if growth_radius > plant_radius:

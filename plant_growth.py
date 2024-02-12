@@ -1,4 +1,6 @@
+from PIL import ImageDraw
 import planar_utils as pu
+import random
 
 def setup_particle_list(num_particles, inject_center, inject_inner_radius, inject_outer_radius, bounding_box):
     """
@@ -41,12 +43,13 @@ def is_adjacent_to_live_pixel(point, pixels, dead_colors):
             continue
     return False
 
-def move_particle(point, strategy = 'FULL_RANDOM_DRIFT'):
+def move_particle(point, bounding_box, strategy = 'FULL_RANDOM_DRIFT'):
     """
     get a moved version of the given point according to the given strategy.
 
     Parameters:
-    - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0
+    - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0)
+    - bounding_box: Tuple of ((min_x, min_y), (max_x, max_y)) reprenting the limits of movement
     - strategy: the drift strategy to use. Options are:
     - 'FULL_RANDOM_DRIFT': drift the point to a randomly chosen adjacent (8-box) one
 
@@ -58,14 +61,15 @@ def move_particle(point, strategy = 'FULL_RANDOM_DRIFT'):
         # Choose one of the adjacent points at random
         point = random.choice(adjacent_points)
         
-    return pu.constrain_point_to_bounding_box(point,IMAGE_BOUNDING_BOX)
+    return pu.constrain_point_to_bounding_box(point,bounding_box)
 
-def grow_at(point, pixels, strategy = 'DEPOSIT'):
+def grow_at(point, pixels, plant_color, strategy = 'DEPOSIT'):
     """
     grow a plant at the given point according to the given strategy.
 
     Parameters:
     - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0
+    - pixels: a grid of pixel values, using an image orientation of the plane (i.e. upper left is 0,0)
     - strategy: the growth strategy to use. Options are:
     - 'DEPOSIT': convert a single pixel at the given point into part of the plant
 
@@ -73,21 +77,20 @@ def grow_at(point, pixels, strategy = 'DEPOSIT'):
     - None
     """
     if strategy == 'DEPOSIT':
-        pixels[point[0],point[1]] = COLOR_PLANT
+        pixels[point[0],point[1]] = plant_color
 
 def set_up_plant_seed(image, seed_radius, fill_color):
     """
     Set up the plant seed.
 
+    Parameters:
+    - image: the image to draw on
+    - seed_radius: the radius of the plant seed
+    - fill_color: the color to fill the plant seed with
+
     Returns:
     - an (x,y) tuple representing the center of the plant seed
     """
-    # seedx, seedy = IMAGE_WIDTH // 2, IMAGE_HEIGHT - 1
-    # seed_left_up_point = (seedx - SEED_RADIUS, seedy - SEED_RADIUS)
-    # seed_right_down_point = (seedx + SEED_RADIUS, seedy + SEED_RADIUS)
-    # DRAW.ellipse([seed_left_up_point, seed_right_down_point], outline=COLOR_PLANT, fill=COLOR_PLANT)
-    # seed_center = (seedx, seedy)
-    # return seed_center
     im_w, im_h = image.size
     draw = ImageDraw.Draw(image)
     seedx, seedy = im_w // 2, im_h - 1
@@ -103,13 +106,14 @@ def get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor,
 
     Parameters:
     - base_radius: the base radius to use
+    - inner_radius_factor: the factor to use for the inner radius; a multiplier of the base radius
+    - outer_radius_factor: the factor to use for the outer radius; a multiplier of the base radius
+    - movement_radius_extension: the amount beyond the outer radius that a particle may be moved
+    - max_inner_radius: the maximum inner radius to use
 
     Returns:
     - a list of particle radii: inject_inner_radius, inject_outer_radius, and max_movement_radius
     """
-    # particle_inject_inner_radius = min(MAX_PARTICLE_INJECT_INNER_RADIUS, base_radius * PARTICLE_INJECTION_MIN_RADIUS_FACTOR)
-    # particle_inject_outer_radius = base_radius * PARTICLE_INJECTION_MAX_RADIUS_FACTOR
-    # particle_max_movement_radius = particle_inject_outer_radius + PARTICLE_MOVEMENT_MAX_RADIUS_EXTENSION
     particle_inject_inner_radius = min(max_inner_radius, base_radius * inner_radius_factor)
     particle_inject_outer_radius = base_radius * outer_radius_factor
     particle_max_movement_radius = particle_inject_outer_radius + movement_radius_extension
