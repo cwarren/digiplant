@@ -117,6 +117,42 @@ def test_setup_plant_seed_bottom_center():
     assert pixels[seed_center] == fill_color, "Seed center pixel color does not match the fill color"
 
 
+@pytest.mark.parametrize("base_radius,inner_radius_factor,outer_radius_factor,movement_radius_extension,max_inner_radius,expected", [
+    (10, 0.5, 1.5, 5, 20, (5, 15, 20)),  # Case where max_inner_radius is not limiting
+    (10, 0.8, 2.0, 10, 5, (5, 20, 30)),  # Case where max_inner_radius is limiting
+    (10, 1.0, 2.0, 0, 15, (10, 20, 20)),  # Case with no movement extension
+])
+def test_get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius, expected):
+    assert get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius) == expected
+
+
+def test_get_particle_within_movement_bounds_ring():
+    
+    inject_center = (50, 50)
+    inject_inner_radius = 5
+    inject_outer_radius = 10
+    max_movement_radius = 20
+    bounding_box = ((0, 0), (200, 200))
+
+    particle_within_bounds = (51, 68)
+    
+    # Case 1: Particle is within movement bounds
+    gotten_particle = get_particle_within_movement_bounds_ring(particle_within_bounds, inject_center, inject_inner_radius, inject_outer_radius, max_movement_radius, bounding_box)
+    print(f"particle_within_bounds: {particle_within_bounds}")
+    print(f"gotten_particle: {gotten_particle}")
+    assert particle_within_bounds == gotten_particle, "The original particle should be returned if within movement bounds"
+
+    # Case 2: Particle is outside movement bounds, expect a new particle
+    far_particle = (150, 150)
+    new_particle = get_particle_within_movement_bounds_ring(far_particle, inject_center, inject_inner_radius, inject_outer_radius, max_movement_radius, bounding_box)
+    assert new_particle != far_particle, "A new particle should be injected if the original is outside movement bounds"
+    assert pu.is_point_in_rect(new_particle, bounding_box), "The new particle should be within the bounding box"
+
+
+
+
+
+
 
 
 
