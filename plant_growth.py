@@ -38,22 +38,24 @@ def setup_particle_list(num_particles, inject_center, inject_inner_radius, injec
         particles.append(injected_particle_ring(inject_center, inject_inner_radius, inject_outer_radius, bounding_box))
     return particles
 
-def is_adjacent_to_live_pixel(point, pixels, dead_colors):
+def is_adjacent_to_live_pixel(point, pixels, dead_colors, bounding_box):
     """
     Determine if the given point is adjacent to a live pixel, where 'live' is defined as a pixel that has a color value that's not in the DEAD_COLORS list
 
     Parameters:
-    - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0)
-    - pxs: a grid of pixel values, using an image orientation of the plane (i.e. upper left is 0,0)
+    - point: an (x,y) tuple, using an image orientation of the plane (i.e. upper left is 0,0); NOTE: negative values will wrap!
+    - pxs: a grid of pixels as loaded from an image, using an image orientation of the plane (i.e. upper left is 0,0)
 
     Returns:
     - True if the point is adjacent to a live pixel, False otherwise
     """
     adjacent_points = pu.get_adjacent_points(point)
+    adjacent_points = pu.filter_points_within_bounding_box(adjacent_points, bounding_box)
     for adj_point in adjacent_points:
         try:
             # Check if the adjacent point is within the image bounds
             # NOTE: color check uses [:3] since the source has an alpha channel that we don't care about
+            print(f"pixels[{adj_point}]: {pixels[adj_point][:3]}")
             if pixels[adj_point][:3] not in dead_colors:
                 return True
         except IndexError:
