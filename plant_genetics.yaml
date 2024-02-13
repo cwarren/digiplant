@@ -1,0 +1,30 @@
+width: 256
+height: 256
+
+color_rgb_bg: [0, 0, 0] # the background color to use for the image
+color_rgba_bg: [0, 0, 0, 255] # the background color to use for the image
+color_rgb_plant: [0, 128, 0] # the color of the plant
+
+grow_amount: 2000 # how many grow actions to make this plant
+particle_count: 25 # how many particles are active at a time
+
+seed_radius: 4
+seed_location: BOTTOM_CENTER
+
+# growth strategies:
+# RING : particles are injected in a ring formed by the difference between the max radius and min radius
+
+growth_strategy: ring
+
+particle_injection_max_radius_factor: 1.6 
+# as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+# NOTE: generally, you want the max to be > 1 and < 3, but you can go higher if you want; higher means sparser, lower means denser
+
+particle_injection_min_radius_factor: 0.8
+# as a multiplier of the maximum radius of the plant (i.e the growth point furthest from the center of the seed); the larger, the more spreading the plant and the longer the run time
+# NOTE: min radius factor of < 1 will increase density, and also make things run faster
+# NOTE: the higher the proportion of the injection ring that overlaps the plant radius, the denser the structure
+
+particle_movement_max_radius_extension: 20
+# as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
+

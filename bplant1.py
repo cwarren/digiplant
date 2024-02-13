@@ -3,6 +3,7 @@ import time
 import planar_utils as pu
 import plant_growth as pg
 import sys
+import yaml
 
 ##################################
 # TODO NOTES AND IDEAS
@@ -17,12 +18,14 @@ import sys
 ##################################
 # CONFIGS / CONSTANTS
 
-USING_DEBUG_LEVEL = 0
+
 DEBUG_LOW = 1
 DEBUG_DEVELOPING = 2
 DEBUG_RICH = 2
 DEBUG_VERY_RICH = 2
 DEBUG_EXTREME = 5
+
+USING_DEBUG_LEVEL = DEBUG_DEVELOPING
 def debug(msg, level=DEBUG_LOW):
     if level <= USING_DEBUG_LEVEL:
         print(msg)
@@ -87,7 +90,20 @@ MAX_PARTICLE_INJECT_INNER_RADIUS = int(max(IMAGE_WIDTH, IMAGE_HEIGHT) * .8) # in
 SEED_RADIUS = 4 
 
 ##################################
-# TEXT FORMATTING
+
+def setup_derived_plant_genetics(plant_genetics):
+    """
+    Add derived plant genetics
+
+    Parameters:
+    - plant_genetics: configuration of how the plant grows
+
+    Returns:
+    - None
+    """
+    plant_genetics['dead_colors'] = [plant_genetics['color_rgb_bg'], COLOR_RGB_PARTICLE_TRACE, COLOR_RGB_PARTICLE_CUR]
+    plant_genetics['max_particle_inject_inner_radius'] = int(max(plant_genetics['width'], plant_genetics['height']) * .8) # inner radius for injection can go most of the way to the edge
+
 
 def lpad(tnum, n):
     """
@@ -245,4 +261,12 @@ def main():
     print(f"Image saved to {final_output_path}")
 
 if __name__ == "__main__":
+    with open("plant_genetics.yaml", 'r') as stream:
+        plant_genetics = yaml.safe_load(stream)
+    setup_derived_plant_genetics(plant_genetics)
+
+    debug(f"plant_genetics: {plant_genetics}", DEBUG_DEVELOPING)
+    sys.exit()
+
+
     main()
