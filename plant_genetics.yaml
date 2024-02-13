@@ -28,3 +28,6 @@ particle_injection_min_radius_factor: 0.8
 particle_movement_max_radius_extension: 20
 # as an addition to the PARTICLE_INJECTION_RADIUS; the larger, the more spreading the plant and the longer the run time
 
+# DERIVED GENETICS - these are calculated at run time
+# max_particle_inject_inner_radius
+# particle_inject_center
