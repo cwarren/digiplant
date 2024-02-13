@@ -117,13 +117,13 @@ def test_setup_plant_seed_bottom_center():
     assert pixels[seed_center] == fill_color, "Seed center pixel color does not match the fill color"
 
 
-@pytest.mark.parametrize("base_radius,inner_radius_factor,outer_radius_factor,movement_radius_extension,max_inner_radius,expected", [
-    (10, 0.5, 1.5, 5, 20, (5, 15, 20)),  # Case where max_inner_radius is not limiting
-    (10, 0.8, 2.0, 10, 5, (5, 20, 30)),  # Case where max_inner_radius is limiting
-    (10, 1.0, 2.0, 0, 15, (10, 20, 20)),  # Case with no movement extension
+@pytest.mark.parametrize("base_radius,plant_genetics,expected", [
+    (10, {'particle_injection_min_radius_factor': 0.5,'particle_injection_max_radius_factor': 1.5,'particle_movement_max_radius_extension': 5,'max_particle_inject_inner_radius': 20}, (5, 15, 20)),  # Case where max_inner_radius is not limiting
+    (10, {'particle_injection_min_radius_factor': 0.8,'particle_injection_max_radius_factor': 2.0,'particle_movement_max_radius_extension': 10,'max_particle_inject_inner_radius': 5}, (5, 20, 30)),  # Case where max_inner_radius is limiting
+    (10, {'particle_injection_min_radius_factor': 1.0,'particle_injection_max_radius_factor': 2.0,'particle_movement_max_radius_extension': 0,'max_particle_inject_inner_radius': 15}, (10, 20, 20)),  # Case with no movement extension
 ])
-def test_get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius, expected):
-    assert get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius) == expected
+def test_get_particle_action_radii_from_base_radius(base_radius, plant_genetics, expected):
+    assert get_particle_action_radii_from_base_radius(base_radius, plant_genetics) == expected
 
 
 def test_get_particle_within_movement_bounds_ring():
@@ -149,10 +149,22 @@ def test_get_particle_within_movement_bounds_ring():
     assert pu.is_point_in_rect(new_particle, bounding_box), "The new particle should be within the bounding box"
 
 
+@pytest.mark.parametrize("particle_that_grew, plant_radius, plant_genetics, expected", [
+    # Test case where growth occurs within the existing radius
+    ((5, 5), 10, {'particle_inject_center': (0, 0), 'particle_injection_min_radius_factor': 0.5,'particle_injection_max_radius_factor': 1.5,'particle_movement_max_radius_extension': 5,'max_particle_inject_inner_radius': 20}, None),
+    # Test case where growth occurs outside the existing radius, expanding it
+    ((0, 20), 10, {'particle_inject_center': (0, 0), 'particle_injection_min_radius_factor': 0.5,'particle_injection_max_radius_factor': 1.5,'particle_movement_max_radius_extension': 5,'max_particle_inject_inner_radius': 20}, (20, 10, 30, 35)),
+])
+def test_grow_radii(particle_that_grew, plant_radius, plant_genetics, expected):
+    result = grow_radii(particle_that_grew, plant_radius, plant_genetics)
 
-
-
-
+    if expected is None:
+        assert result is None
+    else:
+        assert round(result[0], 2) == expected[0]  # Comparing plant_radius
+        assert round(result[1], 3) == expected[1]  # Comparing particle_inject_inner_radius
+        assert round(result[2], 3) == expected[2]  # Comparing particle_inject_outer_radius
+        assert round(result[3], 3) == expected[3]  # Comparing particle_max_movement_radius
 
 
 

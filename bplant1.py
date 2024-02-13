@@ -131,31 +131,6 @@ def handle_incremental_output(incremental_output_counter, growth_counter, increm
         IMAGE.save(incremental_output_path)
     return incremental_output_counter
 
-
-def grow_radii(particle_that_grew, plant_radius, plant_genetics):
-    """
-    based on the particle that grew and the initial plant radius, get the new plant radius and inject and movement radii
-
-    Parameters:
-    - particle_that_grew: the (x,y) at which growth occurred
-    - plant_center: (x,y) point of the center of the plant
-    - plant_radius: the radius of the plant prior to the growth
-
-    Returns:
-    - plant_radius - the new plant radius (which may be the same as the original, depending on where growth occurred)
-    - particle_inject_inner_radius
-    - particle_inject_outer_radius
-    - particle_max_movement_radius
-    """
-    growth_radius = pu.distance_between(plant_genetics['particle_inject_center'], particle_that_grew)
-    if growth_radius > plant_radius:
-        plant_radius = growth_radius
-        particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = pg.get_particle_action_radii_from_base_radius(
-            plant_radius,
-            plant_genetics
-            )
-        return plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
-    return None
         
 ##################################
 ##################################
@@ -200,7 +175,7 @@ def main(plant_genetics):
             pg.grow_at(particle, PIXELS, plant_genetics['color_rgb_plant'])
             debug(f"grew at {particle}", DEBUG_VERY_RICH)
 
-            new_radii = grow_radii(particle, plant_radius, plant_genetics)
+            new_radii = pg.grow_radii(particle, plant_radius, plant_genetics)
             if new_radii is not None:
                 plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = new_radii
 
