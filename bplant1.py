@@ -7,7 +7,6 @@ import sys
 ##################################
 # TODO NOTES AND IDEAS
 
-# generate the base image in code rather than loading one from disk
 # add command-line configs for grow amount, logging flag and increment, and inremental output flags and increment, and debug level
 # get the plant attribute configs from a "genetics" file instead of having them hard-coded here
 # put separated incrementals into a subfolder in the greenhouse
@@ -35,11 +34,12 @@ DO_INCREMENTAL_OUTPUT = True
 DO_INCREMENTAL_OUTPUT_SEPARATED = False
 INCREMENTAL_OUTPUT_DEFAULT_INTERVAL = 400
 
-COLOR_BG = (0,0,0)
-COLOR_PARTICLE_TRACE = (128,0,0)
-COLOR_PARTICLE_CUR = (0,0,128)
-COLOR_PLANT = (0,128,0)
-DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
+COLOR_RGB_BG = (0,0,0)
+COLOR_RGBA_BG = (0,0,0,255)
+COLOR_RGB_PARTICLE_TRACE = (128,0,0)
+COLOR_RGB_PARTICLE_CUR = (0,0,128)
+COLOR_RGB_PLANT = (0,128,0)
+DEAD_COLORS = [COLOR_RGB_BG, COLOR_RGB_PARTICLE_TRACE, COLOR_RGB_PARTICLE_CUR]
 
 ##################################
 # COMMAND LINE CONFIGS
@@ -53,7 +53,7 @@ DEAD_COLORS = [COLOR_BG, COLOR_PARTICLE_TRACE, COLOR_PARTICLE_CUR]
 # PROGRESS_LOGGING_INTERVAL - print progress report to screen after this many growth actions
 # INCREMENTAL_OUTPUT_INTERVAL - output image to file after this many growth actions
 
-GROW_AMOUNT = 1000 # number of times to grow the plant by 1 step
+GROW_AMOUNT = 2000 # number of times to grow the plant by 1 step
 PARTICLE_COUNT = 25 # how many particles to keep active at once (more means denser growth; also impacts run speed though how is less clear) (20 is a decent base)
 
 # particles are injected in a ring formed by the difference between the max radius and min radius
@@ -70,14 +70,15 @@ INCREMENTAL_OUTPUT_INTERVAL = INCREMENTAL_OUTPUT_DEFAULT_INTERVAL
 ##################################
 # IMAGE DATA
 
-IMAGE_PATH = 'black512.png'
-IMAGE = Image.open(IMAGE_PATH)
-IMAGE_WIDTH, IMAGE_HEIGHT = IMAGE.size
+IMAGE_WIDTH = 256
+IMAGE_HEIGHT = 256
+IMAGE = Image.new('RGBA', (IMAGE_WIDTH, IMAGE_HEIGHT), COLOR_RGBA_BG)
 IMAGE_BOUNDING_BOX = ((0, 0), (IMAGE_WIDTH-1, IMAGE_HEIGHT-1))
 PIXELS = IMAGE.load()
 DRAW = ImageDraw.Draw(IMAGE)
 
-MAX_PARTICLE_INJECT_INNER_RADIUS = max(IMAGE_WIDTH, IMAGE_HEIGHT) // 4 # inner radius for injection can be no more than 1/2 way from the center to the farthest edge
+# MAX_PARTICLE_INJECT_INNER_RADIUS = max(IMAGE_WIDTH, IMAGE_HEIGHT) // 4 # inner radius for injection can be no more than 1/2 way from the center to the farthest edge
+MAX_PARTICLE_INJECT_INNER_RADIUS = int(max(IMAGE_WIDTH, IMAGE_HEIGHT) * .8) # inner radius for injection can go most of the way to the edge
 # NOTE: the above assumes the seed is centered in either X or Y
 
 ##################################
@@ -176,7 +177,7 @@ def grow_radii(particle_that_grew, plant_center, plant_radius, particle_inject_i
 # MAIN
 
 def main():
-    particle_inject_center = pg.setup_plant_seed_bottom_center(IMAGE, SEED_RADIUS, COLOR_PLANT)
+    particle_inject_center = pg.setup_plant_seed_bottom_center(IMAGE, SEED_RADIUS, COLOR_RGB_PLANT)
 
     particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = pg.get_particle_action_radii_from_base_radius(
         SEED_RADIUS,
@@ -206,13 +207,13 @@ def main():
         debug(f"acting on particle {particle}", DEBUG_EXTREME)
 
         if DO_PARTICLE_TRACING:
-            PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_TRACE
+            PIXELS[particle[0],particle[1]] = COLOR_RGB_PARTICLE_TRACE
 
         particle = pg.move_particle(particle, IMAGE_BOUNDING_BOX)
 
         if pg.is_adjacent_to_live_pixel(particle, PIXELS, DEAD_COLORS, IMAGE_BOUNDING_BOX):
             growth_counter += 1
-            pg.grow_at(particle, PIXELS, COLOR_PLANT)
+            pg.grow_at(particle, PIXELS, COLOR_RGB_PLANT)
             debug(f"grew at {particle}", DEBUG_VERY_RICH)
 
             plant_radius, particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius = grow_radii(particle, 
@@ -235,7 +236,7 @@ def main():
                                                                    IMAGE_BOUNDING_BOX)
             particles.append(particle)
             if DO_PARTICLE_TRACING:
-                PIXELS[particle[0],particle[1]] = COLOR_PARTICLE_CUR
+                PIXELS[particle[0],particle[1]] = COLOR_RGB_PARTICLE_CUR
 
     total_elapsed_s = int((time.time() - tmark_first))
     final_output_path = f"greenhouse/plant_{GROW_AMOUNT}_{tmark_first}_{total_elapsed_s}.png"
