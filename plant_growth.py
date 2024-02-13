@@ -119,7 +119,9 @@ def setup_plant_seed_bottom_center(image, seed_radius, fill_color):
     seed_center = (seedx, seedy)
     return seed_center
 
-def get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius):
+
+# def get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor, outer_radius_factor, movement_radius_extension, max_inner_radius):
+def get_particle_action_radii_from_base_radius(base_radius, plant_genetics):
     """
     Get a list of particle radii, given the base radius.
 
@@ -133,9 +135,9 @@ def get_particle_action_radii_from_base_radius(base_radius, inner_radius_factor,
     Returns:
     - a list of particle radii: inject_inner_radius, inject_outer_radius, and max_movement_radius
     """
-    particle_inject_inner_radius = min(max_inner_radius, base_radius * inner_radius_factor)
-    particle_inject_outer_radius = base_radius * outer_radius_factor
-    particle_max_movement_radius = particle_inject_outer_radius + movement_radius_extension
+    particle_inject_inner_radius = min(plant_genetics['max_particle_inject_inner_radius'], base_radius * plant_genetics['particle_injection_min_radius_factor'])
+    particle_inject_outer_radius = base_radius * plant_genetics['particle_injection_max_radius_factor']
+    particle_max_movement_radius = particle_inject_outer_radius + plant_genetics['particle_movement_max_radius_extension']
     return particle_inject_inner_radius, particle_inject_outer_radius, particle_max_movement_radius
 
 def get_particle_within_movement_bounds_ring(orig_particle, inject_center, inject_inner_radius, inject_outer_radius, max_movement_radius, bounding_box):
